@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}MGC | Home{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/homepage.css') }}">
+
+<div class="page">
+  <div class="card">
+    <h2>Upload Audio</h2>
+    <p>Select a <b>.wav</b> or <b>.mp3</b> file and click <b>Predict</b>.</p>
+
+    <form action="{{ url_for('prediction') }}" method="POST" enctype="multipart/form-data" class="upload-form">
+      <input id="myfile" type="file" name="myfile" accept=".wav,.mp3" required />
+      <div class="row">
+        <button id="predictBtn" type="submit" class="btn" disabled>Predict</button>
+        <span id="fileLabel" class="muted">No file selected</span>
+      </div>
+
+      <div class="preview">
+        <audio id="previewAudio" controls style="display:none;"></audio>
+        <div id="previewHint" class="muted">Audio preview will appear after selection.</div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}

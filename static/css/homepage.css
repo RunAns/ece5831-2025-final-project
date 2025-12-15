@@ -1,0 +1,22 @@
+.page { padding: 20px 0; }
+.card {
+  width: min(820px, 92vw);
+  margin: 0 auto;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 18px;
+}
+.upload-form { margin-top: 12px; display: grid; gap: 14px; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.muted { opacity: 0.8; }
+.btn {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  cursor: pointer;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.preview { display: grid; gap: 8px; }

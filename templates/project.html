@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}MGC | Project{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-10">
+    <div class="card shadow-sm glass">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-2">Project Overview</h1>
+        <p class="text-secondary mb-4">
+          This project performs <strong>Music Genre Classification</strong> using
+          <strong>MFCC-based audio feature extraction</strong> and a
+          <strong>Convolutional Neural Network (CNN)</strong>. The system is trained on
+          the <strong>GTZAN</strong> dataset with 10 genre classes and deployed through a
+          Flask web application for end-to-end inference.
+        </p>
+
+        <!-- Pipeline -->
+        <div class="p-3 rounded border border-secondary-subtle mb-4">
+          <h2 class="h6 mb-2">End-to-End Pipeline</h2>
+          <ol class="text-secondary mb-0">
+            <li><strong>Input:</strong> user uploads a <code>.wav</code> or <code>.mp3</code> file.</li>
+            <li><strong>Normalization:</strong> MP3 files are converted to WAV using <code>ffmpeg</code>.</li>
+            <li><strong>Preprocessing:</strong> audio is resampled to <code>22,050 Hz</code>, converted to mono, and padded/trimmed to <code>30 seconds</code>.</li>
+            <li><strong>Segmentation:</strong> track is split into <code>10</code> equal segments (3 seconds each).</li>
+            <li><strong>Feature Extraction:</strong> compute <code>13 MFCC</code> coefficients per segment.</li>
+            <li><strong>Model Inference:</strong> CNN predicts class probabilities per segment.</li>
+            <li><strong>Aggregation:</strong> segment probabilities are averaged to produce final Top-3 predictions.</li>
+          </ol>
+        </div>
+
+        <!-- Technical Details Grid -->
+        <div class="row g-3">
+          <!-- Feature Extraction -->
+          <div class="col-12 col-md-6">
+            <div class="p-3 rounded border border-secondary-subtle h-100">
+              <h2 class="h6 mb-2">Feature Extraction (MFCC)</h2>
+              <p class="text-secondary mb-2">
+                We use Mel-Frequency Cepstral Coefficients to represent the short-time spectral envelope of audio.
+                MFCCs compress frequency information in a way that aligns with human auditory perception.
+              </p>
+              <ul class="text-secondary mb-0">
+                <li><strong>Sample rate:</strong> 22,050 Hz</li>
+                <li><strong>Track duration:</strong> 30 seconds (pad/trim)</li>
+                <li><strong>Segments:</strong> 10 (3s each)</li>
+                <li><strong>MFCCs:</strong> 13 coefficients</li>
+                <li><strong>FFT window:</strong> 2048 samples</li>
+                <li><strong>Hop length:</strong> 512 samples</li>
+                <li><strong>Input shape per segment:</strong> <code>(130, 13, 1)</code></li>
+              </ul>
+              <div class="text-secondary small mt-2">
+                The fixed frame count (~130) ensures consistent CNN input dimensions for all segments.
+              </div>
+            </div>
+          </div>
+
+          <!-- Model -->
+          <div class="col-12 col-md-6">
+            <div class="p-3 rounded border border-secondary-subtle h-100">
+              <h2 class="h6 mb-2">Model Architecture (CNN)</h2>
+              <p class="text-secondary mb-2">
+                A CNN is used because MFCCs form a 2D time–frequency representation (frames × coefficients),
+                where local patterns correspond to rhythmic/timbral cues helpful for genre identification.
+              </p>
+              <ul class="text-secondary mb-0">
+                <li><strong>Input:</strong> MFCC segment <code>(130, 13, 1)</code></li>
+                <li><strong>Backbone:</strong> stacked convolution + pooling blocks</li>
+                <li><strong>Regularization:</strong> normalization / dropout (if enabled in training)</li>
+                <li><strong>Output:</strong> 10-class softmax probability distribution</li>
+              </ul>
+              <div class="text-secondary small mt-2">
+                The model predicts probabilities per segment and averages them to reduce variance due to local
+                musical changes within a track.
+              </div>
+            </div>
+          </div>
+
+          <!-- Inference -->
+          <div class="col-12">
+            <div class="p-3 rounded border border-secondary-subtle">
+              <h2 class="h6 mb-2">Inference Strategy (Segment Averaging)</h2>
+              <p class="text-secondary mb-2">
+                Instead of predicting from a single window, we predict genre probabilities for each of the
+                10 segments and aggregate them:
+              </p>
+              <div class="bg-dark bg-opacity-25 border border-secondary-subtle rounded p-3 text-secondary small">
+                <div><code>p_segment = model(mfcc_segment)</code> for segment = 1..10</div>
+                <div><code>p_final = mean(p_segment over all segments)</code></div>
+                <div><code>predicted_genre = argmax(p_final)</code></div>
+              </div>
+              <p class="text-secondary mt-2 mb-0">
+                This improves stability and typically produces more reliable predictions for tracks where musical
+                characteristics vary over time.
+              </p>
+            </div>
+          </div>
+
+          <!-- Evaluation -->
+          <div class="col-12">
+            <div class="p-3 rounded border border-secondary-subtle">
+              <h2 class="h6 mb-2">Evaluation</h2>
+              <p class="text-secondary mb-2">
+                Model performance is evaluated on a held-out test set using accuracy and additional metrics such as
+                per-class precision/recall/F1 and confusion matrices to analyze genre confusions (e.g., rock vs metal).
+              </p>
+              <ul class="text-secondary mb-0">
+                <li><strong>Primary metric:</strong> classification accuracy</li>
+                <li><strong>Diagnostics:</strong> confusion matrix, per-class F1, Top-k accuracy (optional)</li>
+                <li><strong>Deployment:</strong> Flask app supports end-to-end upload → feature extraction → inference → top-3 output</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert-secondary bg-transparent border-secondary-subtle text-secondary small mt-4 mb-0">
+          Note: GTZAN is a popular benchmark dataset for genre classification; results can vary depending on
+          splits and preprocessing choices. The goal here is to demonstrate a complete audio ML pipeline and deployment.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

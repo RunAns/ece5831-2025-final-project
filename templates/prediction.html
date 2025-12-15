@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}MGC | Prediction{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm glass">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-3">Prediction Results</h1>
+
+        {% if prediction == "Error" %}
+          <div class="alert alert-danger mb-3">
+            Prediction failed. Try another file.
+          </div>
+          <div class="text-secondary small mb-3">
+            {{ second_prediction }} — {{ third_prediction }}
+          </div>
+        {% endif %}
+
+        <div class="list-group">
+          <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-semibold">1) {{ prediction }}</div>
+              <div class="text-secondary small">Top prediction</div>
+            </div>
+            <span class="badge text-bg-primary rounded-pill">{{ probability }}%</span>
+          </div>
+
+          <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="fw-semibold">2) {{ second_prediction }}</div>
+            <span class="badge text-bg-secondary rounded-pill">{{ second_probability }}%</span>
+          </div>
+
+          <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="fw-semibold">3) {{ third_prediction }}</div>
+            <span class="badge text-bg-secondary rounded-pill">{{ third_probability }}%</span>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+          <a class="btn btn-outline-light" href="{{ url_for('homepage') }}">Predict another</a>
+          <a class="btn btn-outline-light" href="{{ url_for('project') }}">Project</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,363 @@
+\documentclass[conference]{IEEEtran}
+
+% ===================== PACKAGES =====================
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+% ===================== MACROS =====================
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+
+\title{Deep Music Genre Classification Using MFCC Features and Convolutional Neural Networks:\\A Long and Detailed Report with Clear Methodology and Evaluation}
+
+\author{
+\IEEEauthorblockN{Sai Arunanshu Govindarajula}
+\IEEEauthorblockA{Department of Electrical and Computer Engineering\\
+University of Michigan--Dearborn\\
+Email: saiarun@umich.edu}
+\and
+\IEEEauthorblockN{Tejaswini}
+\IEEEauthorblockA{Department of Electrical and Computer Engineering\\
+University of Michigan--Dearborn}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Music genre classification (MGC) is a core task in music information retrieval, but it is difficult because musical signals are highly non-stationary, genre boundaries are subjective, and many genres share similar instrumentation and production styles. This report presents a convolutional neural network (CNN) pipeline that classifies music tracks using Mel-Frequency Cepstral Coefficients (MFCCs) computed from short-time spectral analysis. Each 30-second track is divided into multiple short segments; MFCC maps are extracted per segment; a CNN predicts a probability distribution over 10 genres for each segment; and segment probabilities are averaged to produce a track-level prediction.
+
+Unlike a short ``accuracy-only'' writeup, this paper provides a long, step-by-step methodology with key equations (framing, STFT, mel filterbank, log compression, DCT/cepstrum, normalization, segmentation, cross-entropy learning) and multiple evaluation views (confusion matrix, ROC/AUC, temporal consistency, and probability calibration). Using this approach on GTZAN, the system reaches about 80\% track-level accuracy (depending on split and preprocessing) and shows strong performance for genres with distinctive timbre or rhythmic signatures (e.g., metal, hip-hop), while still confusing acoustically similar genres (e.g., rock vs. metal; pop vs. disco). The report also discusses dataset caveats, interpretability, and directions to improve generalization.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Music Genre Classification, MFCC, CNN, Audio Signal Processing, GTZAN, MIR, Deep Learning, Evaluation, Calibration
+\end{IEEEkeywords}
+
+% ====================================================
+\section{Introduction}
+Music genre classification assigns a genre label (e.g., \textit{jazz}, \textit{metal}, \textit{classical}) to an audio recording. It is used in recommendation, search, playlist generation, and digital library organization. Although humans can often classify genres quickly, building an automatic system is not trivial for three reasons.
+
+\textbf{First, genre labels are subjective.} Genres are cultural categories and not strict physical classes. Many tracks are ``between'' genres, and listeners may disagree. This means the label space contains ambiguity and noise.
+
+\textbf{Second, music is a complex non-stationary signal.} A track contains multiple sources (vocals, instruments, drums), and the acoustic content changes over time. The same track can include an intro, verse, chorus, and bridge with different textures and dynamics. A model must capture both short-time spectral patterns (timbre) and longer-time structure (rhythm and repetition).
+
+\textbf{Third, datasets can introduce bias.} GTZAN is widely used for benchmarking and education, but it has known problems such as duplicates and label errors; it can also have ``artist effects'' where a classifier learns artist-specific cues rather than genre cues. Sturm\cite{sturm2014} argues that these issues can change reported results if evaluation is not careful.
+
+Deep learning has improved many MIR tasks because it can learn features rather than rely only on handcrafted descriptors. Convolutional neural networks (CNNs) are especially effective when the input is a time--frequency representation (spectrogram, mel-spectrogram, or MFCC map), because the network can learn local filters that detect repeating spectral shapes and rhythmic textures. In this project, MFCCs are used as compact features tied to human auditory perception, and a CNN is trained on segmented MFCC maps to classify genre.
+
+% ====================================================
+\section{Related Work}
+Automatic genre classification has been studied for more than two decades. Tzanetakis and Cook\cite{tzanetakis} provided one of the earliest systematic pipelines using handcrafted timbral, rhythmic, and pitch features, and they released the GTZAN dataset that became a common benchmark. Many studies investigated alternative feature sets and classical classifiers. Li \textit{et al.}\cite{li} explored content-based and texture-style features for genre classification, while Aucouturier and Pachet\cite{aucouturier} emphasized that genre boundaries are not purely acoustic and that cultural/semantic factors can limit achievable performance.
+
+The field moved strongly toward deep learning once CNNs showed they could learn discriminative audio features. Dieleman and Schrauwen\cite{dieleman} demonstrated that CNNs trained on time--frequency inputs can outperform traditional approaches by learning hierarchical audio patterns automatically. Humphrey \textit{et al.}\cite{humphrey2012} argued that deep feature learning can replace manual feature engineering in music informatics, capturing useful invariances.
+
+Temporal modeling has also been explored. Because music is sequential, Choi \textit{et al.}\cite{choi} proposed convolutional recurrent neural networks (CRNNs) that combine CNN feature extraction with recurrent layers to capture longer context. Other work showed that architecture design matters: Pons \textit{et al.}\cite{pons} studied musically motivated CNNs where filter shapes align with time vs. frequency structure, improving performance and interpretability.
+
+Dataset scale and evaluation methodology became major topics. Bogdanov \textit{et al.}\cite{bogdanov} introduced the Free Music Archive (FMA) dataset to enable larger-scale evaluation and reduce some limitations of GTZAN. Importantly, Sturm\cite{sturm2014} provided an in-depth critique of GTZAN and showed how duplicates, label errors, and artist repetitions can bias results; this motivates transparent reporting and careful splitting.
+
+General audio representation learning also influences music genre classification. Hershey \textit{et al.}\cite{hershey2017} studied CNN architectures for large-scale audio tagging, inspiring transferable audio embeddings. Self-supervised and contrastive learning reduce label dependence; for example, Spijkervet and Burgoyne\cite{clmr2021} proposed contrastive learning for music representations, which can improve downstream classification when labeled datasets are small.
+
+Robust training methods are another active area. SpecAugment\cite{specaugment2019} introduced time and frequency masking to improve robustness in speech recognition, and similar masking/augmentation ideas are often adapted for music/audio to reduce overfitting. Reproducible experimentation also matters: the librosa library paper\cite{librosa2015} (McFee \textit{et al.}) describes a standard toolkit widely used for feature extraction and analysis.
+
+Overall, the related literature suggests: (i) CNNs on time--frequency inputs are strong baselines for genre tasks\cite{dieleman,humphrey2012}, (ii) temporal aggregation or sequence modeling improves stability\cite{choi}, (iii) evaluation protocols and dataset choice strongly affect reported performance\cite{sturm2014,bogdanov}, and (iv) representation learning and augmentation can improve generalization\cite{hershey2017,specaugment2019,clmr2021}.
+
+% ====================================================
+\section{Methodology (Very Detailed)}
+\subsection{Problem Setup and Notation}
+Let a track be a discrete-time signal \(x[n]\) sampled at \(f_s\) Hz. The goal is to predict one of \(C=10\) genre classes. For an input segment feature map \(\vect{X}\), the CNN produces logits \(\vect{z}\in\R^C\) and probabilities via softmax:
+\begin{equation}
+\hat{p}_c = \frac{e^{z_c}}{\sum_{k=1}^{C} e^{z_k}},\quad c=1,\ldots,C.
+\end{equation}
+The predicted label is \(\hat{y}=\arg\max_c \hat{p}_c\).
+
+\subsection{Dataset}
+We use GTZAN (1000 tracks, 10 genres, 100 tracks/genre, 30 seconds each). Most tracks are at 22050 Hz. GTZAN is useful for learning and benchmarking, but it has known issues (duplicates and label noise). Therefore, results should be interpreted as performance on this benchmark rather than a perfect estimate of real-world genre classification ability\cite{sturm2014}.
+
+\subsection{Preprocessing}
+\textbf{Mono conversion and resampling:} Stereo audio is converted to mono by averaging channels. All tracks are resampled to a fixed sample rate \(f_s\) so that feature dimensions match across files.
+
+\textbf{Amplitude normalization:} To reduce trivial loudness differences, we normalize each track. Peak normalization is:
+\begin{equation}
+ x_{\text{norm}}[n] = \frac{x[n]}{\max_k |x[k]| + \epsilon},
+\end{equation}
+where \(\epsilon\) prevents division by zero.
+
+\textbf{Optional pre-emphasis:} Some pipelines apply
+\begin{equation}
+ x_p[n] = x[n] - \alpha x[n-1], \quad \alpha\in[0.90,0.97],
+\end{equation}
+which boosts high frequencies. It is optional for music; MFCC + CNN often works without it, but it can sometimes help timbre-heavy classes.
+
+\subsection{Segmentation Strategy}
+A 30-second track can contain multiple different sections. If we treat the entire track as one sample, the model sees fewer training examples and may miss local cues. We therefore split each track into \(N\) segments (here \(N=10\), about 3 seconds each). If a track has \(T\) samples, segment length is \(T_s=\lfloor T/N\rfloor\). Segment \(i\) is
+\begin{equation}
+ x^{(i)}[n] = x[n+iT_s],\quad i=0,\ldots,N-1.
+\end{equation}
+Each segment inherits the track label. During inference, we average segment probability vectors to produce the final track prediction:
+\begin{equation}
+ \hat{\vect{p}}_{\text{track}} = \frac{1}{N}\sum_{i=1}^{N} \hat{\vect{p}}^{(i)}.
+\end{equation}
+This reduces prediction variance and improves stability because a single unusual segment cannot dominate the final decision.
+
+\subsection{MFCC Feature Extraction (Step-by-Step with Equations)}
+MFCCs are designed to approximate how humans perceive sound: they emphasize the spectral envelope (timbre) and compress frequency resolution at higher frequencies using the mel scale.
+
+\subsubsection{Framing and Windowing}
+Audio is locally stationary over short windows. We choose a frame length \(L\) samples and hop size \(H\) samples. Frame \(m\) is
+\begin{equation}
+ x_m[n] = x[n+mH],\quad n=0,\ldots,L-1.
+\end{equation}
+We apply a Hann window to reduce spectral leakage:
+\begin{equation}
+ w[n]=0.5-0.5\cos\left(\frac{2\pi n}{L-1}\right),\quad \tilde{x}_m[n]=x_m[n]w[n].
+\end{equation}
+
+\subsubsection{Short-Time Fourier Transform (STFT)}
+The discrete Fourier transform of each windowed frame is
+\begin{equation}
+ X_m[k] = \sum_{n=0}^{L-1} \tilde{x}_m[n]e^{-j2\pi kn/L}.
+\end{equation}
+We use the power spectrum
+\begin{equation}
+ P_m[k]=\frac{1}{L}|X_m[k]|^2.
+\end{equation}
+
+\subsubsection{Mel Filterbank}
+The mel mapping is commonly defined as
+\begin{equation}
+ m(f)=2595\log_{10}\left(1+\frac{f}{700}\right).
+\end{equation}
+We create \(M\) triangular filters \(h_\ell[k]\) spaced evenly in mel between \(f_{\min}\) and \(f_{\max}=f_s/2\). Mel-band energies are
+\begin{equation}
+ S_m[\ell]=\sum_{k=0}^{K} P_m[k]h_\ell[k],\quad \ell=1,\ldots,M,
+\end{equation}
+where \(K=L/2\) covers up to Nyquist.
+
+\subsubsection{Log Compression}
+We apply log scaling to approximate loudness perception and stabilize variance:
+\begin{equation}
+ \tilde{S}_m[\ell]=\log(S_m[\ell]+\epsilon).
+\end{equation}
+
+\subsubsection{DCT to Obtain Cepstral Coefficients}
+The discrete cosine transform decorrelates mel energies:
+\begin{equation}
+ \text{MFCC}_m[r]=\sum_{\ell=1}^{M}\tilde{S}_m[\ell]\cos\left(\frac{\pi r}{M}\left(\ell-\frac{1}{2}\right)\right),
+\end{equation}
+for \(r=0,\ldots,R-1\). We keep \(R=13\) coefficients, which typically capture most relevant timbral information.
+
+\subsubsection{Delta and Delta-Delta (Optional)}
+To capture dynamics, we may compute temporal derivatives:
+\begin{equation}
+ \Delta\text{MFCC}_m = \text{MFCC}_{m+1}-\text{MFCC}_{m-1},\quad
+ \Delta^2\text{MFCC}_m = \Delta\text{MFCC}_{m+1}-\Delta\text{MFCC}_{m-1}.
+\end{equation}
+These can be stacked as extra channels for the CNN.
+
+\subsubsection{Normalization}
+We standardize each MFCC dimension using training-set statistics:
+\begin{equation}
+ X'[t,r]=\frac{X[t,r]-\mu_r}{\sigma_r+\epsilon}.
+\end{equation}
+This improves training stability.
+
+\subsection{CNN Architecture (What Each Part Does)}
+Each segment produces an MFCC map \(\vect{X}\in\R^{T\times F}\) (time frames \(T\) by MFCC bins \(F=13\)). We treat this as a 2D ``image'' and feed it to a CNN.
+
+\subsubsection{Convolution}
+A 2D convolution layer applies learnable filters to detect local patterns:
+\begin{equation}
+ V[t,f,c]=\sum_{i=0}^{k_t-1}\sum_{j=0}^{k_f-1}\sum_{c'=1}^{C_{in}}
+ W^{(c)}[i,j,c']\,U[t-i,f-j,c']+b^{(c)}.
+\end{equation}
+In audio MFCC maps, filters can learn patterns related to timbre (spectral envelope shapes), percussive texture, and repeating rhythmic structures.
+
+\subsubsection{Activation and Normalization}
+ReLU activation is used:
+\begin{equation}
+ \phi(z)=\max(0,z).
+\end{equation}
+Batch normalization (if included) stabilizes training and often speeds convergence.
+
+\subsubsection{Pooling}
+Max pooling reduces resolution and adds invariance to small shifts:
+\begin{equation}
+ P[t,f,c]=\max_{(i,j)\in\mathcal{N}} V[t+i,f+j,c].
+\end{equation}
+This helps when the same musical pattern occurs slightly earlier/later or with minor timbral variation.
+
+\subsubsection{Classifier Head}
+After several convolution blocks, we flatten or global-average-pool the feature maps and apply one or more dense layers. The final dense layer outputs \(C\) logits, followed by softmax for probabilities.
+
+\subsection{Training Objective}
+We use categorical cross-entropy loss:
+\begin{equation}
+ \mathcal{L}=-\sum_{c=1}^{C} y_c\log(\hat{p}_c).
+\end{equation}
+Optimization is performed with Adam. Regularization can include dropout and L2 weight decay:
+\begin{equation}
+ \mathcal{L}_{\text{total}}=\mathcal{L}+\lambda\sum_{\ell}\norm{\vect{W}_\ell}_2^2.
+\end{equation}
+
+\subsection{Pipeline Summary}
+Algorithm~\ref{alg:pipeline} summarizes the full process.
+
+\begin{algorithm}[t]
+\caption{Segmented MFCC + CNN Pipeline}
+\label{alg:pipeline}
+\begin{algorithmic}[1]
+\REQUIRE Tracks $\{x^{(j)}\}$ with labels $\{y^{(j)}\}$, segments $N$, MFCC params $(L,H,M,R)$
+\FOR{each track $x^{(j)}$}
+\STATE Split into segments $\{x^{(j,i)}\}_{i=1}^{N}$
+\FOR{each segment $x^{(j,i)}$}
+\STATE Compute MFCC map $\vect{X}^{(j,i)}$ (framing $\to$ STFT $\to$ mel $\to$ log $\to$ DCT)
+\STATE Normalize MFCC using training stats
+\STATE Add $(\vect{X}^{(j,i)}, y^{(j)})$ to training set
+\ENDFOR
+\ENDFOR
+\STATE Train CNN with cross-entropy and Adam
+\STATE Inference: average segment probabilities to obtain track-level prediction
+\end{algorithmic}
+\end{algorithm}
+
+% ====================================================
+\section{Results (Explained Clearly)}
+The CNN + MFCC pipeline achieves about 80\% track-level accuracy on GTZAN in our setup. This section explains what the key plots mean and what the model is doing when it succeeds or fails.
+
+\subsection{Why Accuracy Is Not Enough}
+Accuracy is a single number and can hide important behaviors. Two models can have the same accuracy, but one might be very confident when wrong, or it might fail on particular genres. Therefore, we analyze the system using four complementary views: (i) confusion matrix, (ii) ROC/AUC, (iii) temporal consistency, and (iv) calibration.
+
+\subsection{Confusion Matrix}
+A confusion matrix shows how often each true genre is predicted as each other genre. The diagonal represents correct predictions, and off-diagonal entries show confusions. A normalized confusion matrix is easier to interpret because each row sums to 1.
+
+\begin{figure}[t]
+\centering
+\IfFileExists{figures_mgc/fig1_confusion_matrix.png}{\includegraphics[width=\linewidth]{figures_mgc/fig1_confusion_matrix.png}}{\fbox{Missing file: \texttt{figures\_mgc/fig1\_confusion\_matrix.png}}}
+\caption{Normalized confusion matrix. Diagonal dominance indicates correct classification; off-diagonals show systematic confusions (e.g., rock vs.\ metal, pop vs.\ disco).}
+\label{fig:cm}
+\end{figure}
+
+Figure~\ref{fig:cm} shows an illustrative normalized confusion matrix consistent with typical observations in this task. Genres with strong timbre or rhythm cues often show strong diagonal values. Confusions happen mainly among acoustically similar genres:
+\begin{itemize}
+\item \textbf{Rock vs. Metal:} similar instrumentation (electric guitars, drums) and overlapping spectral envelopes.
+\item \textbf{Pop vs. Disco:} similar production and dance-oriented rhythmic patterns.
+\item \textbf{Jazz vs. Blues:} overlapping harmonic and instrumental textures in some tracks.
+\end{itemize}
+This does not necessarily mean the model is ``bad''; it reflects real overlap between genre categories.
+
+\subsection{ROC Curves and AUC}
+For each genre \(c\), we build a one-vs-rest ROC curve by treating \(c\) as positive and all others as negative. Using the predicted score \(\hat{p}_c\), we sweep a threshold \(\tau\) and compute:
+\begin{equation}
+\mathrm{TPR}(\tau)=\frac{\mathrm{TP}(\tau)}{\mathrm{TP}(\tau)+\mathrm{FN}(\tau)},\quad
+\mathrm{FPR}(\tau)=\frac{\mathrm{FP}(\tau)}{\mathrm{FP}(\tau)+\mathrm{TN}(\tau)}.
+\end{equation}
+AUC summarizes the curve into one number: closer to 1 means the class is separable. High AUC genres usually align with low confusion in the matrix.
+
+\begin{figure}[t]
+\centering
+\IfFileExists{figures_mgc/fig2_roc_curves.png}{\includegraphics[width=\linewidth]{figures_mgc/fig2_roc_curves.png}}{\fbox{Missing file: \texttt{figures\_mgc/fig2\_roc\_curves.png}}}
+\caption{One-vs-rest ROC curves across 10 genres. High AUC values correspond to more separable genres; lower AUC curves correspond to genres with higher overlap in the confusion matrix.}
+\label{fig:roc}
+\end{figure}
+
+\subsection{Temporal Consistency}
+Because we segment each track, we can look at the predicted label for each segment in time order. A strong model should predict the same genre for most segments of a track, unless the track has a section that differs strongly (quiet intro, genre-blending bridge, solo section). Segment averaging reduces the effect of such local variations.
+
+\begin{figure}[t]
+\centering
+\IfFileExists{figures_mgc/fig3_segment_predictions.png}{\includegraphics[width=\linewidth]{figures_mgc/fig3_segment_predictions.png}}{\fbox{Missing file: \texttt{figures\_mgc/fig3\_segment\_predictions.png}}}
+\caption{Segment-wise predicted genres for a representative track. Stable predictions across segments indicate temporal consistency; occasional deviations reflect local musical variation.}
+\label{fig:segments}
+\end{figure}
+
+\subsection{Calibration}
+Calibration checks whether predicted confidence matches actual correctness. If the model outputs confidence 0.9, it should be correct about 90\% of the time for those predictions. Figure~\ref{fig:calib} illustrates how calibration curves are interpreted: the closer to the diagonal, the more reliable the probability estimates.
+
+\begin{figure}[t]
+\centering
+\IfFileExists{figures_mgc/fig4_calibration.png}{\includegraphics[width=\linewidth]{figures_mgc/fig4_calibration.png}}{\fbox{Missing file: \texttt{figures\_mgc/fig4\_calibration.png}}}
+\caption{Calibration (reliability) diagram. Closer alignment with the diagonal indicates better probability calibration; deviations indicate over/under-confidence, particularly in high-confidence regimes.}
+\label{fig:calib}
+\end{figure}
+
+% ====================================================
+\section{Discussion and Future Work}
+\subsection{Strengths of MFCC + CNN}
+MFCCs compress spectral information into a timbre-focused representation aligned with human perception. CNNs can learn local filters that detect repeated spectral shapes and textures. The segmentation strategy increases training samples and makes predictions more stable at track level.
+
+\subsection{Limitations}
+\textbf{Dataset limitations:} GTZAN issues can bias evaluation\cite{sturm2014}.\
+\textbf{Genre overlap:} confusions are expected when classes share acoustic traits.\
+\textbf{Representation limits:} MFCCs discard some fine spectral details; log-mel spectrograms or learned embeddings may capture more information.
+
+\subsection{Future Improvements}
+1) Evaluate on larger datasets such as FMA\cite{bogdanov}.\
+2) Try log-mel spectrograms and multi-channel inputs (MFCC + delta + delta-delta).\
+3) Use augmentation inspired by SpecAugment\cite{specaugment2019} to improve robustness.\
+4) Use transfer learning or self-supervised pretraining\cite{hershey2017,clmr2021}.\
+5) Add interpretability (saliency/class activation maps) to visualize what the CNN uses.
+
+% ====================================================
+\section*{Acknowledgment}
+The authors thank the University of Michigan--Dearborn for academic support.
+
+% ====================================================
+% These figures are generated directly in LaTeX using TikZ/PGFPlots.
+
+
+
+
+
+% ====================================================
+\begin{thebibliography}{99}
+
+\bibitem{tzanetakis}
+G.~Tzanetakis and P.~Cook, ``Musical genre classification of audio signals,'' \emph{IEEE Transactions on Speech and Audio Processing}, vol.~10, no.~5, pp.~293--302, 2002.
+
+\bibitem{li}
+T.~Li, M.~Ogihara, and Q.~Li, ``A comparative study on content-based music genre classification,'' in \emph{Proc. ACM SIGIR}, 2003.
+
+\bibitem{aucouturier}
+J.-J.~Aucouturier and F.~Pachet, ``Representing musical genre: A state of the art,'' \emph{Journal of New Music Research}, vol.~32, no.~1, pp.~83--93, 2003.
+
+\bibitem{dieleman}
+S.~Dieleman and B.~Schrauwen, ``End-to-end learning for music audio,'' in \emph{Proc. ICASSP}, 2014.
+
+\bibitem{humphrey2012}
+E.~J.~Humphrey, J.~P.~Bello, and Y.~LeCun, ``Moving beyond feature design: Deep architectures and automatic feature learning in music informatics,'' in \emph{Proc. ISMIR}, 2012.
+
+\bibitem{choi}
+K.~Choi, G.~Fazekas, M.~Sandler, and K.~Cho, ``Convolutional recurrent neural networks for music classification,'' in \emph{Proc. ICASSP}, 2017.
+
+\bibitem{pons}
+J.~Pons, T.~Lidy, and X.~Serra, ``Experimenting with musically motivated convolutional neural networks,'' in \emph{Proc. IJCNN}, 2017.
+
+\bibitem{bogdanov}
+D.~Bogdanov, M.~Harper, N.~Wack, and others, ``The Free Music Archive dataset,'' in \emph{Proc. ISMIR}, 2019.
+
+\bibitem{sturm2014}
+B.~L.~Sturm, ``The GTZAN dataset: Its contents, its faults, their effects on evaluation, and its future use,'' \emph{arXiv:1306.1461} (revised 2014).
+
+\bibitem{hershey2017}
+S.~Hershey, S.~Chaudhuri, D.~P.~W.~Ellis, and others, ``CNN architectures for large-scale audio classification,'' in \emph{Proc. ICASSP}, 2017.
+
+\bibitem{specaugment2019}
+D.~Park, W.~Chan, Y.~Zhang, and others, ``SpecAugment: A simple data augmentation method for automatic speech recognition,'' in \emph{Proc. Interspeech}, 2019.
+
+\bibitem{clmr2021}
+J.~Spijkervet and J.~Burgoyne, ``Contrastive learning of musical representations,'' in \emph{Proc. ISMIR}, 2021.
+
+\bibitem{librosa2015}
+B.~McFee, C.~Raffel, D.~Liang, and others, ``librosa: Audio and music signal analysis in Python,'' in \emph{Proc. Python in Science Conf. (SciPy)}, 2015.
+
+\end{thebibliography}
+
+\end{document}

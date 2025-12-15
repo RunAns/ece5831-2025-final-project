@@ -1,0 +1,3 @@
+Drive URL: https://drive.google.com/file/d/1dskBzo7LxMXuGnIir9f9zhCyadT9hAlM/view?usp=sharing
+
+Kaggle URL: https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification

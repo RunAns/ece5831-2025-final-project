@@ -1,0 +1,26 @@
+html, body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+body{
+  background:#0b1220;
+  color:#e6edf7;
+}
+
+.glass{
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+}
+
+a, .nav-link { color: rgba(230,237,247,0.85); }
+.nav-link:hover { color: #fff; }

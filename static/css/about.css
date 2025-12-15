@@ -1,0 +1,10 @@
+.page { padding: 20px 0; }
+.card {
+  width: min(820px, 92vw);
+  margin: 0 auto;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 18px;
+}
+.muted { opacity: 0.8; }

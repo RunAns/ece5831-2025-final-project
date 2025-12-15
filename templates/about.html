@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}MGC | About{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9">
+    <div class="card shadow-sm glass">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-3">About This Project</h1>
+
+        <p class="text-secondary mb-4">
+          The Music Genre Classifier is an academic project focused on applying
+          audio signal processing and deep learning techniques to automatically
+          classify music into distinct genres.
+        </p>
+
+        <div class="row g-4">
+          <!-- About Us -->
+          <div class="col-12 col-md-6">
+            <div class="p-3 rounded border border-secondary-subtle h-100">
+              <h2 class="h6 mb-2">About Us</h2>
+              <p class="text-secondary mb-2">
+                This project was developed by:
+              </p>
+              <ul class="text-secondary mb-0">
+                <li><strong>Sai Arunanshu Govindarajula</strong></li>
+                <li><strong>Tejaswini</strong></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Why We Did This -->
+          <div class="col-12 col-md-6">
+            <div class="p-3 rounded border border-secondary-subtle h-100">
+              <h2 class="h6 mb-2">Why We Built This</h2>
+              <p class="text-secondary mb-0">
+                We built this project to better understand how audio features such as
+                Mel-Frequency Cepstral Coefficients (MFCCs) can represent musical
+                characteristics, and how convolutional neural networks can learn
+                time–frequency patterns for genre classification.
+              </p>
+            </div>
+          </div>
+
+          <!-- Technical Focus -->
+          <div class="col-12">
+            <div class="p-3 rounded border border-secondary-subtle">
+              <h2 class="h6 mb-2">Technical Focus</h2>
+              <p class="text-secondary mb-0">
+                The system extracts MFCC features from audio tracks, divides each track
+                into multiple time segments, and feeds these representations into a CNN
+                trained on the GTZAN dataset. Segment-level predictions are averaged to
+                produce a robust final genre prediction. This approach bridges concepts
+                from signal processing, pattern recognition, and deep learning.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert-secondary bg-transparent border-secondary-subtle text-secondary small mt-4 mb-0">
+          This project was developed for academic learning and demonstration purposes.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

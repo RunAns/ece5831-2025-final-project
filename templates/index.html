@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}MGC | Home{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+
+    <!-- Upload Card -->
+    <div class="card shadow-sm glass mb-4">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-2">Music Genre Classifier</h1>
+        <p class="text-secondary mb-4">
+          Upload a <strong>.wav</strong> or <strong>.mp3</strong> audio file.
+          The system extracts MFCC features and predicts the music genre using a trained CNN.
+        </p>
+
+        <form action="{{ url_for('prediction') }}" method="POST" enctype="multipart/form-data" class="d-grid gap-3">
+          <div>
+            <label class="form-label">Audio file</label>
+            <input id="audioFile" class="form-control" type="file" name="myfile" accept=".wav,.mp3" required>
+            <div class="form-text" id="fileHelp">No file selected.</div>
+          </div>
+
+          <div class="d-grid gap-2">
+            <audio id="audioPreview" controls class="w-100 d-none"></audio>
+            <div id="audioHint" class="text-secondary small">
+              Preview appears after you choose a file.
+            </div>
+          </div>
+
+          <button id="predictBtn" class="btn btn-primary" type="submit" disabled>
+            Predict
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Explanation Section -->
+    <div class="card shadow-sm glass">
+      <div class="card-body p-4">
+        <h2 class="h6 mb-2">How It Works</h2>
+        <p class="text-secondary mb-3">
+          This application demonstrates an end-to-end audio classification pipeline
+          built using signal processing and deep learning techniques.
+        </p>
+
+        <ul class="text-secondary mb-0">
+          <li>Audio is resampled and split into short time segments</li>
+          <li>Mel-Frequency Cepstral Coefficients (MFCCs) are extracted</li>
+          <li>A Convolutional Neural Network predicts genre probabilities per segment</li>
+          <li>Segment predictions are averaged for a robust final result</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="text-secondary small mt-3">
+      Tip: if you upload an MP3 file, the backend automatically converts it to WAV using <code>ffmpeg</code>.
+    </div>
+
+  </div>
+</div>
+{% endblock %}

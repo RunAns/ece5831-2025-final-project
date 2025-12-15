@@ -1,0 +1,32 @@
+.page { padding: 20px 0; }
+.card {
+  width: min(820px, 92vw);
+  margin: 0 auto;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 18px;
+}
+.results { margin-top: 12px; display: grid; gap: 10px; }
+.result {
+  display: grid;
+  grid-template-columns: 40px 1fr 90px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.15);
+}
+.rank {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,123,255,0.18);
+  border: 1px solid rgba(0,123,255,0.25);
+  font-weight: 700;
+}
+.genre { text-transform: capitalize; font-weight: 700; }
+.prob { text-align: right; font-variant-numeric: tabular-nums; }
+.error { color: #ffb3b3; }
+.link { display: inline-block; margin-top: 14px; text-decoration: none; }
